@@ -1,0 +1,332 @@
+
+
+<html lang="en">
+  <head>
+    <title>SL DevCode</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
+    />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+	<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      /* Style the body */
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+      }
+
+      /* Header/logo Title */
+      .header {
+        padding: 80px;
+        text-align: center;
+        background: #1abc9c;
+        color: white;
+      }
+
+      /* Increase the font size of the heading */
+      .header h1 {
+        font-size: 40px;
+      }
+
+      /* Style the navigation bar links */
+      .navbar a {
+        float: left;
+        display: block;
+        color: white;
+        text-align: center;
+        padding: 14px 20px;
+        text-decoration: none;
+      }
+
+      /* Right-aligned link */
+      .navbar a.right {
+        float: right;
+      }
+
+      /* Change color on hover */
+      .navbar a:hover {
+        background-color: #ddd;
+        color: black;
+      }
+
+      /* Column container */
+      .row {
+        display: -ms-flexbox; /* IE10 */
+        display: flex;
+        -ms-flex-wrap: wrap; /* IE10 */
+        flex-wrap: wrap;
+      }
+
+      /* Create two unequal columns that sits next to each other */
+      /* Sidebar/left column */
+      .side {
+        -ms-flex: 30%; /* IE10 */
+        flex: 30%;
+        background-color: #f1f1f1;
+        padding: 20px;
+      }
+
+      /* Main column */
+      .main {
+        -ms-flex: 70%; /* IE10 */
+        flex: 70%;
+        background-color: white;
+        padding: 20px;
+      }
+
+      /* Fake image, just for this example */
+      .fakeimg {
+        background-color: #aaa;
+        width: 100%;
+        padding: 20px;
+      }
+
+      /* Footer */
+      .footer {
+        padding: 20px;
+        text-align: center;
+        background: #ddd;
+      }
+
+      /* Responsive layout - when the screen is less than 700px wide, make the two columns stack on top of each other instead of next to each other */
+      @media screen and (max-width: 700px) {
+        .row {
+          flex-direction: column;
+        }
+      }
+
+      /* Responsive layout - when the screen is less than 400px wide, make the navigation links stack on top of each other instead of next to each other */
+      @media screen and (max-width: 400px) {
+        .navbar a {
+          float: none;
+          width: 100%;
+        }
+      }
+
+	  <script>
+            function addLoading() {
+                var loadingBanner = $('<div class="alert alert-primary" role="alert">Processing your text...</div>');
+                $("body").prepend(loadingBanner);
+                loadingBanner.css("display", "none")
+                loadingBanner.css("position", "sticky");
+                loadingBanner.css("top", "0");
+                loadingBanner.css("zIndex", "100");
+                loadingBanner.slideDown();
+            }
+        </script>
+
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>SL DevCode - Gap Filled Question Generator</h1>
+    </div>
+
+
+    <!--------------------- FUNCTION ---------------------------->
+
+	  <body onload="bodyLoad()" style="padding: 10px;">
+        <div class="container">
+            <div class="row">
+ <div class="col">
+                    <h3>Type your answer to the question in the box and press enter or click submit.<br>If you give up, you can reload the page.</h3>
+                </div>
+            </div>
+            {# previous questions #}
+            {% for question in successful_questions %}
+                {# question #}
+                <div class="row">
+                    <div class="col">
+                        <p>{{ question[1] }}<p>
+                    </div>
+                </div>
+                {# answer #}
+                <div class="row">
+                    <div class="col">
+                        <p>The answer was <b>{{ question[0] }}</b></p>
+                    </div>
+                </div>
+                <hr>
+            {% endfor %}
+
+            {# no more questions #}
+            {% if has_more_questions %}
+                <div class="row">
+                    <div class="col">
+                        <p>{{ current_question[1] }}</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <input type="text" id="response" placeholder="Enter your answer" onclick="this.select()" class="form-control">
+                    </div>
+                    <div class="col">
+                        <button onclick="checkAnswer()" class="btn btn-primary">Submit</button>
+                    </div>
+                </div>
+            {% else %}
+                <div class="row">
+                    <div class="col">
+                        <p>Could not find any more questions for you.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        <script>
+            //check current response to the question
+            function checkAnswer() {
+                var userResponse = $("#response").val().toLowerCase();
+                var answer = "{{ current_question[0] | safe }}".toLowerCase();
+                if (userResponse == answer) {
+                    //loading sign while getting next data
+                    addLoading();
+                    //request next question from server
+                    $.ajax({
+                        url: "/questions",
+                        method: "GET",
+                        data: {
+                            session_id: "{{ session_id }}"
+                        },
+                        success: function(response) {
+                            //overwrite page
+                            document.open();
+                            document.write(response);
+                            document.close();
+                        }
+                    });
+                } else {
+                    //wrong answer
+                    // alert("Incorrect")
+                    addWrongAnswer();
+                    $("#response").select();
+                }
+            }
+
+            //allow enter press in place of submit button click
+            $("#response").keyup(function(event) {
+                if (event.keyCode === 13) {
+                    checkAnswer();
+                }
+            });
+
+            //to be executed when the page loads
+            function bodyLoad() {
+                //select the text box for instant typing
+                $('#response').select();
+                //scroll to the bottom
+                jumpToPageBottom();
+            }
+
+            //loading banner
+            function addLoading() {
+                var loadingBanner = $('<div class="alert alert-primary" role="alert">Loading...</div>');
+                $("body").prepend(loadingBanner);
+                loadingBanner.css("display", "none")
+                loadingBanner.css("position", "sticky");
+                loadingBanner.css("top", "0");
+                loadingBanner.css("zIndex", "100");
+                loadingBanner.slideDown();
+            }
+
+            //incorrect answer banner
+            function addWrongAnswer() {
+                var wrongBanner = $('<div class="alert alert-danger" role="alert">Incorrect</div>');
+                $("body").prepend(wrongBanner);
+                wrongBanner.css("display", "none")
+                wrongBanner.css("position", "sticky");
+                wrongBanner.css("top", "0");
+                wrongBanner.css("zIndex", "100");
+                wrongBanner.slideDown();
+
+                //slide back up
+                setInterval(function() {
+                    wrongBanner.slideUp().done(function() {
+                        wrongBanner.remove();
+                    });
+                }, 5000);
+            }
+
+            //scroll to the bottom of the page when loaded
+            function jumpToPageBottom() {
+                $('html, body').scrollTop($(document).height() - $(window).height());
+            }
+        </script>
+        <center>
+
+  <a href = "/" class = "btn btn-info" role="button">Move to back</a>
+</center>
+
+        <div class="container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Programming</th>
+                <th>Science</th>
+                <th>Cloud Computing</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="success">
+                <td>What is HTML?</td>
+                <td>What is the biggest planet in our solar system?</td>
+                <td>What is a cloud service?</td>
+              </tr>
+              <tr class="danger">
+                <td>What is an algorithm?</td>
+                <td>When was Einstein born?</td>
+                <td>What is Cloud Computing?</td>
+              </tr>
+              <tr class="info">
+                <td>What are variables?</td>
+                <td>Who invented the telegraph?</td>
+                <td>What is Microsoft Azure?</td>
+              </tr>
+              <tr class="warning">
+                <td>What do we call the binary form of a target language?</td>
+                <td>What is TCP/IP?</td>
+                <td>What is public cloud?</td>
+              </tr>
+              <tr class="active">
+                <td>What is an Array?</td>
+                <td>What is the state flower of Montana?</td>
+                <td>What is private cloud?</td>
+              </tr>
+
+              <tr class="danger">
+                <td>What is subroutine?</td>
+                <td>What does obfuscate mean?</td>
+                <td>What are Hybrid clouds?</td>
+              </tr>
+              <tr class="info">
+                <td>What is the use of Nested Loop?</td>
+                <td>What is the state flower of Montana?</td>
+                <td>What is a cloud?</td>
+              </tr>
+              <tr class="warning">
+                <td>What is ip address?</td>
+                <td>What is TCP/IP?</td>
+                <td>What is AWS?</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <h2>SL DevCode</h2>
+    </div>
+  </body>
+</html>
+
+
